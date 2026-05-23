@@ -1,10 +1,34 @@
 import { getDb, nowSec } from "./client";
 import type { NewTask, Task, TaskStatus, TaskTotals } from "./types";
+import { parseTags } from "../lib/tags";
 
 export async function listTasks(status: TaskStatus): Promise<Task[]> {
   const db = await getDb();
   return db.select<Task[]>(
     "SELECT * FROM tasks WHERE status = $1 ORDER BY position ASC, id ASC",
+    [status],
+  );
+}
+
+export type TaskWithWorked = Task & { worked_sec: number };
+
+export async function listTasksWithWorked(
+  status: TaskStatus,
+): Promise<TaskWithWorked[]> {
+  const db = await getDb();
+  return db.select<TaskWithWorked[]>(
+    `SELECT t.*,
+       COALESCE((
+         SELECT SUM(duration_sec)
+         FROM sessions
+         WHERE task_id = t.id AND ended_reason IS NOT NULL
+       ), 0) AS worked_sec
+     FROM tasks t
+     WHERE t.status = $1
+     ORDER BY
+       CASE WHEN $1 = 'done' THEN t.completed_at ELSE NULL END DESC,
+       t.position ASC,
+       t.id ASC`,
     [status],
   );
 }
@@ -80,17 +104,15 @@ export async function reorderTask(id: number, newPosition: number): Promise<void
   await db.execute("UPDATE tasks SET position = $1 WHERE id = $2", [newPosition, id]);
 }
 
+// Both totals queries count only *closed* sessions (ended_reason IS NOT NULL).
+// The currently-running session's elapsed time is added at the UI layer to keep
+// per-second tick updates cheap (no DB roundtrip per tick).
 export async function getTaskTotals(taskId: number): Promise<TaskTotals> {
   const db = await getDb();
   const rows = await db.select<{ worked_sec: number | null }[]>(
-    `SELECT COALESCE(SUM(
-       CASE
-         WHEN duration_sec IS NOT NULL THEN duration_sec
-         WHEN ended_at IS NOT NULL THEN ended_at - started_at
-         ELSE 0
-       END
-     ), 0) AS worked_sec
-     FROM sessions WHERE task_id = $1`,
+    `SELECT COALESCE(SUM(duration_sec), 0) AS worked_sec
+     FROM sessions
+     WHERE task_id = $1 AND ended_reason IS NOT NULL`,
     [taskId],
   );
   const task = await getTask(taskId);
@@ -100,19 +122,31 @@ export async function getTaskTotals(taskId: number): Promise<TaskTotals> {
   };
 }
 
+export async function getAllTags(): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.select<{ tag: string }[]>(
+    "SELECT DISTINCT tag FROM tasks WHERE tag IS NOT NULL AND tag <> ''",
+  );
+  const set = new Set<string>();
+  for (const row of rows) {
+    for (const t of parseTags(row.tag)) set.add(t);
+  }
+  return Array.from(set).sort();
+}
+
 export async function getViewTotals(status: TaskStatus): Promise<TaskTotals> {
   const db = await getDb();
   const rows = await db.select<{ worked_sec: number | null; est_min: number | null }[]>(
     `SELECT
-       COALESCE(SUM(
-         CASE WHEN s.duration_sec IS NOT NULL THEN s.duration_sec
-              WHEN s.ended_at IS NOT NULL THEN s.ended_at - s.started_at
-              ELSE 0 END
+       COALESCE((
+         SELECT SUM(s.duration_sec)
+         FROM sessions s
+         JOIN tasks t2 ON t2.id = s.task_id
+         WHERE t2.status = $1 AND s.ended_reason IS NOT NULL
        ), 0) AS worked_sec,
-       COALESCE(SUM(t.estimated_minutes), 0) AS est_min
-     FROM tasks t
-     LEFT JOIN sessions s ON s.task_id = t.id
-     WHERE t.status = $1`,
+       COALESCE((
+         SELECT SUM(estimated_minutes) FROM tasks WHERE status = $1
+       ), 0) AS est_min`,
     [status],
   );
   return {
