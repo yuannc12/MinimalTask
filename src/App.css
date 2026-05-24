@@ -371,6 +371,80 @@ textarea {
 .task-tag {
   font-size: 13px;
   color: var(--ink-3);
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  border-radius: 3px;
+  cursor: text;
+  transition: background var(--t), color var(--t);
+}
+
+.task-tag:hover {
+  background: var(--bg-muted);
+  color: var(--ink-2);
+}
+
+.task-tag-edit {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg-muted);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 0 -4px;
+}
+
+.task-tag-edit-prefix {
+  color: var(--ink-3);
+}
+
+.task-tag-input {
+  font-size: 13px;
+  color: var(--ink);
+  width: auto;
+  min-width: 16px;
+  padding: 0;
+}
+
+.task-estimate,
+.task-worked {
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  border-radius: 3px;
+  cursor: text;
+  font: inherit;
+  color: inherit;
+  transition: background var(--t), color var(--t);
+}
+
+.task-estimate:hover,
+.task-worked:hover {
+  background: var(--bg-muted);
+  color: var(--ink);
+}
+
+.task-estimate-empty {
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity var(--t), background var(--t), color var(--t);
+}
+
+.task-row:hover .task-estimate-empty {
+  opacity: 1;
+}
+
+.task-estimate-input {
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg-muted);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  width: auto;
 }
 
 /* Add-input suggestion dropdown */
@@ -592,42 +666,16 @@ textarea {
   font-style: italic;
 }
 
-.task-details-actions {
+.task-details-status {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.task-details-save {
-  background: var(--ink);
-  color: var(--bg);
-  padding: 6px 16px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: background var(--t);
-}
-
-.task-details-save:hover {
-  background: #000;
-}
-
-.task-details-cancel {
-  color: var(--ink-2);
-  font-size: 13px;
-  text-decoration: underline;
-  text-decoration-color: var(--line);
-  text-underline-offset: 3px;
-  padding: 6px 4px;
-}
-
-.task-details-cancel:hover {
-  color: var(--ink);
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
 }
 
 .task-details-hint {
-  margin-left: auto;
   font-size: 12px;
   color: var(--ink-3);
 }
@@ -636,6 +684,34 @@ textarea {
   color: var(--ink);
   text-decoration-color: var(--ink);
   opacity: 1;
+}
+
+.task-disclosure {
+  font-size: 16px;
+  color: var(--ink-3);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--t), color var(--t), transform var(--t);
+  transform: rotate(0deg);
+  line-height: 1;
+}
+
+.task-row:hover .task-disclosure,
+.task-disclosure.is-open {
+  opacity: 1;
+}
+
+.task-disclosure.is-open {
+  transform: rotate(90deg);
+  color: var(--ink);
+}
+
+.task-disclosure:hover {
+  color: var(--ink);
 }
 
 .pane-footer {

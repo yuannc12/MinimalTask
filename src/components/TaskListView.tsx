@@ -117,12 +117,19 @@ export function TaskListView({
     setExpandedId((cur) => (cur === task.id ? null : task.id));
   };
 
+  const handlePatch = async (
+    task: Task,
+    patch: Partial<{ tag: string | null; estimated_minutes: number | null }>,
+  ) => {
+    await updateTask(task.id, patch);
+    await refresh();
+  };
+
   const handleSaveDetails = async (
     task: Task,
     patch: { tag: string | null; estimated_minutes: number | null; note: string | null },
   ) => {
     await updateTask(task.id, patch);
-    setExpandedId(null);
     await refresh();
   };
 
@@ -266,6 +273,7 @@ export function TaskListView({
           onComplete={timer.complete}
           onMoveStatus={handleMoveStatus}
           onToggleExpand={handleToggleExpand}
+          onPatch={handlePatch}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -291,7 +299,7 @@ export function TaskListView({
             task={task}
             knownTags={knownTags}
             onSave={(patch) => handleSaveDetails(task, patch)}
-            onCancel={() => setExpandedId(null)}
+            onClose={() => setExpandedId(null)}
           />
         )}
       </Fragment>
