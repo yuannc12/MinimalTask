@@ -5,7 +5,12 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:default",
+    "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
     "opener:default",
+    "global-shortcut:default",
     {
       "identifier": "sql:allow-load",
       "allow": [{ "url": "sqlite:minimaltask.db" }]

@@ -29,6 +29,15 @@ export function AddTaskInput({ status, knownTags, onAdd }: Props) {
   const [suggestIdx, setSuggestIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    function onFocus() {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+    window.addEventListener("minimaltask:focus-add", onFocus);
+    return () => window.removeEventListener("minimaltask:focus-add", onFocus);
+  }, []);
+
   const tagCtx = findTagAtCursor(value, cursor);
   const suggestions = tagCtx
     ? knownTags
