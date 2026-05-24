@@ -12,6 +12,7 @@ const TRAY_REFRESH_MS = 60_000;
 
 function App() {
   const [status, setStatus] = useState<TaskStatus>("today");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [counts, setCounts] = useState<Record<TaskStatus, number>>({
     today: 0,
     backlog: 0,
@@ -49,6 +50,37 @@ function App() {
     };
   }, [refreshTick, timer.running?.taskId, timer.running == null]);
 
+  // Window-scoped shortcuts: Cmd+1/2/3 switch view, Cmd+B toggles sidebar.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const inInput =
+        !!target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+        return;
+      }
+      if (inInput) return;
+      if (e.key === "1") {
+        e.preventDefault();
+        setStatus("today");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setStatus("backlog");
+      } else if (e.key === "3") {
+        e.preventDefault();
+        setStatus("done");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Bridge tray + global-shortcut events into the timer + view state.
   useEffect(() => {
     const unlisteners: UnlistenFn[] = [];
@@ -78,7 +110,7 @@ function App() {
   }, []);
 
   return (
-    <div className="app">
+    <div className={`app ${sidebarOpen ? "" : "sidebar-hidden"}`}>
       <Sidebar active={status} onSelect={setStatus} counts={counts} />
       <TaskListView
         status={status}

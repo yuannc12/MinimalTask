@@ -37,6 +37,7 @@ interface Props {
 
 type InlineEdit =
   | { kind: "tag"; original: string }
+  | { kind: "addTag" }
   | { kind: "estimate" }
   | null;
 
@@ -104,6 +105,7 @@ export function TaskRow({
     } else if (e.key === "Escape") {
       setDraft(task.title);
       setEditing(false);
+      if (isExpanded) onToggleExpand(task);
     }
   }
 
@@ -121,28 +123,66 @@ export function TaskRow({
     );
   }
 
-  function commitInlineEdit() {
-    if (!inlineEdit) return;
-    const trimmed = inlineDraft.trim();
-    if (inlineEdit.kind === "tag") {
+  function startAddTag() {
+    if (isDone) return;
+    setInlineEdit({ kind: "addTag" });
+    setInlineDraft("");
+  }
+
+  function applyTagCommit(raw: string, edit: InlineEdit) {
+    const trimmed = raw.trim();
+    if (!edit) return;
+    if (edit.kind === "tag") {
       const next = normalizeTag(trimmed);
       const current = parseTags(task.tag);
       let updated: string[];
       if (!next) {
-        updated = current.filter((t) => t !== inlineEdit.original);
-      } else if (next === inlineEdit.original) {
+        updated = current.filter((t) => t !== edit.original);
+      } else if (next === edit.original) {
         updated = current;
       } else {
         updated = current
-          .map((t) => (t === inlineEdit.original ? next : t))
-          .filter((t, i, arr) => arr.indexOf(t) === i); // dedupe
+          .map((t) => (t === edit.original ? next : t))
+          .filter((t, i, arr) => arr.indexOf(t) === i);
       }
       void onPatch(task, { tag: stringifyTags(updated) });
+    } else if (edit.kind === "addTag") {
+      const next = normalizeTag(trimmed);
+      if (next) {
+        const current = parseTags(task.tag);
+        if (!current.includes(next)) {
+          void onPatch(task, { tag: stringifyTags([...current, next]) });
+        }
+      }
+    }
+  }
+
+  function commitInlineEdit() {
+    if (!inlineEdit) return;
+    if (inlineEdit.kind === "tag" || inlineEdit.kind === "addTag") {
+      applyTagCommit(inlineDraft, inlineEdit);
     } else if (inlineEdit.kind === "estimate") {
+      const trimmed = inlineDraft.trim();
       const minutes = trimmed ? parseDuration(trimmed) : null;
       void onPatch(task, { estimated_minutes: minutes });
     }
     setInlineEdit(null);
+  }
+
+  function handleTagInputChange(raw: string) {
+    const value = raw.replace(/^#+/, "");
+    if (
+      value.includes(",") &&
+      inlineEdit &&
+      (inlineEdit.kind === "tag" || inlineEdit.kind === "addTag")
+    ) {
+      const [first, rest] = value.split(",", 2);
+      applyTagCommit(first, inlineEdit);
+      setInlineEdit({ kind: "addTag" });
+      setInlineDraft(rest);
+      return;
+    }
+    setInlineDraft(value);
   }
 
   function handleInlineKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -180,6 +220,7 @@ export function TaskRow({
     "task-row",
     isDone ? "is-done" : "",
     isRunning ? "is-running" : "",
+    isExpanded ? "is-expanded" : "",
     dragState === "dragging" ? "is-dragging" : "",
     dragState === "drop-above" ? "is-drop-above" : "",
     dragState === "drop-below" ? "is-drop-below" : "",
@@ -201,6 +242,7 @@ export function TaskRow({
         onClick={() => onToggleDone(task)}
         aria-label={isDone ? "Mark as not done" : "Mark as done"}
       />
+      <div className="task-row-main">
       <div className="task-title-wrap">
         {editing ? (
           <input
@@ -214,13 +256,25 @@ export function TaskRow({
         ) : (
           <span
             className="task-title"
-            onClick={() => !isDone && setEditing(true)}
+            onClick={() => {
+              if (isDone) {
+                onToggleExpand(task);
+                return;
+              }
+              if (isExpanded) {
+                onToggleExpand(task);
+              } else {
+                onToggleExpand(task);
+                setEditing(true);
+              }
+            }}
           >
             {task.title}
           </span>
         )}
       </div>
 
+      <div className="task-row-secondary">
       <div className="task-meta">
         {parseTags(task.tag).map((t) =>
           inlineEdit?.kind === "tag" && inlineEdit.original === t ? (
@@ -230,7 +284,7 @@ export function TaskRow({
                 ref={inlineInputRef}
                 className="task-tag-input"
                 value={inlineDraft}
-                onChange={(e) => setInlineDraft(e.target.value.replace(/^#+/, ""))}
+                onChange={(e) => handleTagInputChange(e.target.value)}
                 onBlur={commitInlineEdit}
                 onKeyDown={handleInlineKey}
                 size={Math.max(inlineDraft.length || 1, t.length)}
@@ -241,13 +295,34 @@ export function TaskRow({
               key={t}
               className="task-tag"
               onClick={() => startEditTag(t)}
-              title="Click to edit"
             >
               #{t}
             </button>
           ),
         )}
-        {task.tag &&
+        {inlineEdit?.kind === "addTag" ? (
+          <span className="task-tag-edit">
+            <span className="task-tag-edit-prefix">#</span>
+            <input
+              ref={inlineInputRef}
+              className="task-tag-input"
+              value={inlineDraft}
+              onChange={(e) => handleTagInputChange(e.target.value)}
+              onBlur={commitInlineEdit}
+              onKeyDown={handleInlineKey}
+              size={Math.max(inlineDraft.length || 1, 4)}
+              placeholder="tag"
+            />
+          </span>
+        ) : !isDone && parseTags(task.tag).length === 0 ? (
+          <button
+            className="task-tag task-tag-add"
+            onClick={startAddTag}
+          >
+            +tag
+          </button>
+        ) : null}
+        {(task.tag || inlineEdit?.kind === "addTag") &&
         (task.estimated_minutes || isRunning || priorWorkedSec > 0) ? (
           <span className="task-meta-sep">·</span>
         ) : null}
@@ -271,7 +346,7 @@ export function TaskRow({
           />
         ) : priorWorkedSec > 0 ? (
           <button className="task-worked" onClick={startEditEstimate} title="Click to edit estimate">
-            {fmtSec(priorWorkedSec)}
+            {priorWorkedSec < 60 ? "<1m" : fmtSec(priorWorkedSec)}
             {task.estimated_minutes ? (
               <span className="task-elapsed-est"> / {task.estimated_minutes}m</span>
             ) : null}
@@ -321,7 +396,7 @@ export function TaskRow({
                 onClick={() => onMoveStatus(task, "today")}
                 title="Move to Today"
               >
-                → today
+                →today
               </button>
             ) : task.status === "today" ? (
               <button
@@ -329,28 +404,11 @@ export function TaskRow({
                 onClick={() => onMoveStatus(task, "backlog")}
                 title="Move to Backlog"
               >
-                → backlog
+                →backlog
               </button>
             ) : null}
-            <button
-              className={`task-disclosure ${isExpanded ? "is-open" : ""}`}
-              onClick={() => onToggleExpand(task)}
-              aria-label={isExpanded ? "Collapse details" : "Expand details"}
-              title="Details"
-            >
-              ›
-            </button>
           </>
-        ) : (
-          <button
-            className={`task-disclosure ${isExpanded ? "is-open" : ""}`}
-            onClick={() => onToggleExpand(task)}
-            aria-label={isExpanded ? "Collapse details" : "Expand details"}
-            title="Details"
-          >
-            ›
-          </button>
-        )}
+        ) : null}
         {!isRunning && (
           <button
             className="task-delete"
@@ -361,6 +419,8 @@ export function TaskRow({
             ×
           </button>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

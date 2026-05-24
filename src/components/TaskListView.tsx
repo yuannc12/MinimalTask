@@ -127,7 +127,7 @@ export function TaskListView({
 
   const handleSaveDetails = async (
     task: Task,
-    patch: { tag: string | null; estimated_minutes: number | null; note: string | null },
+    patch: { note: string | null },
   ) => {
     await updateTask(task.id, patch);
     await refresh();
@@ -297,9 +297,9 @@ export function TaskListView({
         {isExpanded && (
           <TaskDetails
             task={task}
-            knownTags={knownTags}
             onSave={(patch) => handleSaveDetails(task, patch)}
             onClose={() => setExpandedId(null)}
+            autoFocus={false}
           />
         )}
       </Fragment>
