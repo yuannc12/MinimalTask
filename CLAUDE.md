@@ -76,11 +76,19 @@ App quit while running closes the open session with `ended_reason='app_quit'`. N
 ## Commands
 
 ```bash
-npm run dev          # Vite dev server only
-npm run tauri dev    # Tauri shell + Vite (full app, first run compiles Rust ~5min)
-npm run build        # Vite production build
-npm run tauri build  # full app bundle
+npm run dev               # Vite dev server only
+npm run tauri dev         # Tauri shell + Vite (full app, first run compiles Rust ~5min)
+npm run build             # Vite production build
+npm run tauri build       # full app bundle (.app + .dmg, Apple Silicon)
+npm run install:local     # build + replace /Applications/minimaltask.app + launch
+npm run release -- 0.1.1  # bump version, build, tag, push, attach .dmg to GitHub Release
 ```
+
+## Distribution
+
+Apple Silicon only. Unsigned (no Apple Developer account). First-launch flow for a fresh install on someone else's Mac: right-click the .app → Open to bypass Gatekeeper once.
+
+Update cadence is "fix every now and then." Users re-download a newer .dmg from GitHub Releases and drag over the existing install. No auto-updater.
 
 ## Conventions
 
