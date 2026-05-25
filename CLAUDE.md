@@ -1,6 +1,6 @@
 # MinimalTask
 
-A local-first, single-user desktop task timer in the Blitzit shape. Flat list, blitz one task at a time, log the time, look at the data later.
+A local-first, single-user desktop task timer. Flat list, work one task at a time, log the time, look at the data later.
 
 Read `/Users/yuann/Powerhouse/agent/RULES.md` and `SOUL.md` at session start (already enforced by the parent project).
 

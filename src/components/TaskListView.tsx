@@ -181,28 +181,52 @@ export function TaskListView({
       return;
     }
 
-    const ordered = tasks.slice().sort((a, b) => a.position - b.position);
-    const targetIdx = ordered.findIndex((t) => t.id === target.id);
-    const insertIdx = drag.edge === "above" ? targetIdx : targetIdx + 1;
-    const before = ordered[insertIdx - 1];
-    const after = ordered[insertIdx];
+    if (sortMode === "manual") {
+      const ordered = tasks.slice().sort((a, b) => a.position - b.position);
+      const targetIdx = ordered.findIndex((t) => t.id === target.id);
+      const insertIdx = drag.edge === "above" ? targetIdx : targetIdx + 1;
+      const before = ordered[insertIdx - 1];
+      const after = ordered[insertIdx];
 
-    let newPos: number;
-    if (before && after) {
-      if (before.id === dragged.id || after.id === dragged.id) {
+      let newPos: number;
+      if (before && after) {
+        if (before.id === dragged.id || after.id === dragged.id) {
+          setDrag(null);
+          return;
+        }
+        newPos = (before.position + after.position) / 2;
+      } else if (before) {
+        newPos = before.position + 1;
+      } else if (after) {
+        newPos = after.position - 1;
+      } else {
+        newPos = 0;
+      }
+      await reorderTask(dragged.id, newPos);
+    } else {
+      // Est-sorted view: positions don't match visual order, so renumber the
+      // displayed tasks to match the new visual order, then drop back to manual.
+      const visible = filteredTasks;
+      const draggedIdx = visible.findIndex((t) => t.id === dragged.id);
+      const targetIdx = visible.findIndex((t) => t.id === target.id);
+      if (draggedIdx < 0 || targetIdx < 0) {
         setDrag(null);
         return;
       }
-      newPos = (before.position + after.position) / 2;
-    } else if (before) {
-      newPos = before.position + 1;
-    } else if (after) {
-      newPos = after.position - 1;
-    } else {
-      newPos = 0;
+      const without = visible.filter((t) => t.id !== dragged.id);
+      let insertIdx = drag.edge === "above" ? targetIdx : targetIdx + 1;
+      if (draggedIdx < targetIdx) insertIdx -= 1;
+      const newOrder = [
+        ...without.slice(0, insertIdx),
+        dragged,
+        ...without.slice(insertIdx),
+      ];
+      for (let i = 0; i < newOrder.length; i++) {
+        await reorderTask(newOrder[i].id, i + 1);
+      }
+      changeSort("manual");
     }
 
-    await reorderTask(dragged.id, newPos);
     setDrag(null);
     await refresh();
   };
@@ -226,11 +250,26 @@ export function TaskListView({
     return base;
   }, [tasks, status, activeFilters, sortMode]);
 
-  const liveWorkedSec =
-    timer.running && tasks.some((t) => t.id === timer.running!.taskId)
-      ? totals.worked_sec + timer.running.elapsedSec
-      : totals.worked_sec;
-  const overBudget = liveWorkedSec > totals.estimated_min * 60 && totals.estimated_min > 0;
+  const filterActive = status === "backlog" && activeFilters.length > 0;
+  const displayTotals = useMemo(() => {
+    if (!filterActive) return totals;
+    let workedSec = 0;
+    let estMin = 0;
+    for (const t of filteredTasks) {
+      workedSec += t.worked_sec;
+      estMin += t.estimated_minutes ?? 0;
+    }
+    return { worked_sec: workedSec, estimated_min: estMin };
+  }, [filterActive, filteredTasks, totals]);
+
+  const runningTaskVisible =
+    timer.running != null &&
+    filteredTasks.some((t) => t.id === timer.running!.taskId);
+  const liveWorkedSec = runningTaskVisible
+    ? displayTotals.worked_sec + timer.running!.elapsedSec
+    : displayTotals.worked_sec;
+  const overBudget =
+    liveWorkedSec > displayTotals.estimated_min * 60 && displayTotals.estimated_min > 0;
 
   return (
     <div className="pane">
@@ -257,10 +296,10 @@ export function TaskListView({
               <span className={overBudget ? "is-over" : ""}>
                 {fmtSec(liveWorkedSec)}
               </span>
-              {totals.estimated_min > 0 && (
+              {displayTotals.estimated_min > 0 && (
                 <>
                   {" / "}
-                  <span>{fmtMin(totals.estimated_min)}</span>
+                  <span>{fmtMin(displayTotals.estimated_min)}</span>
                 </>
               )}
             </div>
@@ -332,7 +371,6 @@ export function TaskListView({
           isExpanded={isExpanded}
           runningElapsedSec={isRunning ? timer.running!.elapsedSec : 0}
           priorWorkedSec={task.worked_sec}
-          dragEnabled={sortMode === "manual"}
           dragState={
             !drag
               ? null

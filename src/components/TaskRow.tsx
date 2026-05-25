@@ -30,7 +30,6 @@ interface Props {
   onDragEnd: () => void;
   onDrop: () => void;
   dragState?: "dragging" | "drop-above" | "drop-below" | null;
-  dragEnabled?: boolean;
   isRunning: boolean;
   isExpanded: boolean;
   runningElapsedSec: number;
@@ -60,7 +59,6 @@ export function TaskRow({
   onDragEnd,
   onDrop,
   dragState,
-  dragEnabled = true,
   isRunning,
   isExpanded,
   runningElapsedSec,
@@ -199,6 +197,13 @@ export function TaskRow({
     }
   }
 
+  function handleDragStart(e: DragEvent<HTMLDivElement>) {
+    // WebKit (Tauri on macOS) won't start a drag unless dataTransfer has data.
+    e.dataTransfer.setData("text/plain", String(task.id));
+    e.dataTransfer.effectAllowed = "move";
+    onDragStart(task);
+  }
+
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -236,8 +241,8 @@ export function TaskRow({
   return (
     <div
       className={classes}
-      draggable={dragEnabled && !editing && !isRunning}
-      onDragStart={() => onDragStart(task)}
+      draggable={!editing && !isRunning}
+      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={onDragEnd}
       onDrop={handleDrop}
