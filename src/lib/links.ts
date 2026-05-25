@@ -1,4 +1,4 @@
-const URL_RE = /\bhttps?:\/\/[^\s<>"')]+/gi;
+const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"')]+/gi;
 
 export function extractLinks(text: string | null | undefined): string[] {
   if (!text) return [];
@@ -14,9 +14,14 @@ export function extractLinks(text: string | null | undefined): string[] {
   return out;
 }
 
+/** Prepend https:// when a match is scheme-less (e.g. www.ramp.com). */
+export function toHref(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 export function linkLabel(url: string): string {
   try {
-    const u = new URL(url);
+    const u = new URL(toHref(url));
     const path = u.pathname.replace(/\/$/, "");
     if (path && path !== "/") {
       const segs = path.split("/").filter(Boolean);

@@ -8,7 +8,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Task, TaskStatus } from "../db";
 import { fmtClock, fmtMin, fmtSec, parseDuration } from "../lib/parseInput";
-import { extractLinks } from "../lib/links";
+import { extractLinks, toHref } from "../lib/links";
 import { normalizeTag, parseTags, stringifyTags } from "../lib/tags";
 
 interface Props {
@@ -386,7 +386,7 @@ export function TaskRow({
             className="task-link"
             onClick={(e) => {
               e.stopPropagation();
-              void openUrl(links[0]);
+              void openUrl(toHref(links[0]));
             }}
             title={links.length === 1 ? links[0] : links.join("\n")}
           >

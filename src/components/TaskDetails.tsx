@@ -8,7 +8,7 @@ import {
 } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Task } from "../db";
-import { extractLinks, linkLabel } from "../lib/links";
+import { extractLinks, linkLabel, toHref } from "../lib/links";
 
 interface Props {
   task: Task;
@@ -83,7 +83,7 @@ export function TaskDetails({ task, onSave, onClose, autoFocus = true }: Props) 
             <button
               key={url}
               className="task-details-link"
-              onClick={() => void openUrl(url)}
+              onClick={() => void openUrl(toHref(url))}
               title={url}
             >
               {linkLabel(url)}
