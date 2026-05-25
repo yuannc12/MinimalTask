@@ -36,6 +36,21 @@ const TITLES: Record<TaskStatus, string> = {
   done: "Done",
 };
 
+type SortMode = "manual" | "est";
+
+const SORT_STORAGE_PREFIX = "minimaltask:sort:";
+
+function loadSort(status: TaskStatus): SortMode {
+  if (typeof localStorage === "undefined") return "manual";
+  const v = localStorage.getItem(SORT_STORAGE_PREFIX + status);
+  return v === "est" ? "est" : "manual";
+}
+
+function saveSort(status: TaskStatus, mode: SortMode) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SORT_STORAGE_PREFIX + status, mode);
+}
+
 type DragState = {
   draggedId: number;
   overId: number | null;
@@ -55,6 +70,7 @@ export function TaskListView({
   const [knownTags, setKnownTags] = useState<string[]>([]);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>(() => loadSort(status));
 
   const refresh = useCallback(async () => {
     const [rows, tot, tags] = await Promise.all([
@@ -74,7 +90,13 @@ export function TaskListView({
   useEffect(() => {
     setActiveFilters([]);
     setExpandedId(null);
+    setSortMode(loadSort(status));
   }, [status]);
+
+  const changeSort = (next: SortMode) => {
+    setSortMode(next);
+    saveSort(status, next);
+  };
 
   useEffect(() => {
     if (!onCountsChange) return;
@@ -186,12 +208,23 @@ export function TaskListView({
   };
 
   const filteredTasks = useMemo(() => {
-    if (status !== "backlog" || activeFilters.length === 0) return tasks;
-    return tasks.filter((t) => {
-      const tags = parseTags(t.tag);
-      return activeFilters.every((f) => tags.includes(f));
-    });
-  }, [tasks, status, activeFilters]);
+    const base =
+      status === "backlog" && activeFilters.length > 0
+        ? tasks.filter((t) => {
+            const tags = parseTags(t.tag);
+            return activeFilters.every((f) => tags.includes(f));
+          })
+        : tasks;
+    if (sortMode === "est") {
+      return base.slice().sort((a, b) => {
+        const ae = a.estimated_minutes ?? Number.POSITIVE_INFINITY;
+        const be = b.estimated_minutes ?? Number.POSITIVE_INFINITY;
+        if (ae !== be) return ae - be;
+        return a.position - b.position;
+      });
+    }
+    return base;
+  }, [tasks, status, activeFilters, sortMode]);
 
   const liveWorkedSec =
     timer.running && tasks.some((t) => t.id === timer.running!.taskId)
@@ -204,16 +237,33 @@ export function TaskListView({
       <header className="view-header">
         <h1 className="view-title">{TITLES[status]}</h1>
         {status !== "done" && (
-          <div className="view-totals">
-            <span className={overBudget ? "is-over" : ""}>
-              {fmtSec(liveWorkedSec)}
-            </span>
-            {totals.estimated_min > 0 && (
-              <>
-                {" / "}
-                <span>{fmtMin(totals.estimated_min)}</span>
-              </>
-            )}
+          <div className="view-header-right">
+            <div className="view-sort" role="group" aria-label="Sort">
+              <button
+                className={`view-sort-opt ${sortMode === "manual" ? "is-active" : ""}`}
+                onClick={() => changeSort("manual")}
+              >
+                manual
+              </button>
+              <span className="view-sort-sep">/</span>
+              <button
+                className={`view-sort-opt ${sortMode === "est" ? "is-active" : ""}`}
+                onClick={() => changeSort("est")}
+              >
+                est
+              </button>
+            </div>
+            <div className="view-totals">
+              <span className={overBudget ? "is-over" : ""}>
+                {fmtSec(liveWorkedSec)}
+              </span>
+              {totals.estimated_min > 0 && (
+                <>
+                  {" / "}
+                  <span>{fmtMin(totals.estimated_min)}</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </header>
@@ -282,6 +332,7 @@ export function TaskListView({
           isExpanded={isExpanded}
           runningElapsedSec={isRunning ? timer.running!.elapsedSec : 0}
           priorWorkedSec={task.worked_sec}
+          dragEnabled={sortMode === "manual"}
           dragState={
             !drag
               ? null

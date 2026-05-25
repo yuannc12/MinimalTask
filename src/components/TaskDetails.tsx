@@ -8,37 +8,7 @@ import {
 } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Task } from "../db";
-
-const URL_RE = /\bhttps?:\/\/[^\s<>"')]+/gi;
-
-function extractLinks(text: string): string[] {
-  const matches = text.match(URL_RE) ?? [];
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const m of matches) {
-    if (!seen.has(m)) {
-      seen.add(m);
-      out.push(m);
-    }
-  }
-  return out;
-}
-
-function linkLabel(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.replace(/\/$/, "");
-    if (path && path !== "/") {
-      const segs = path.split("/").filter(Boolean);
-      return segs.length > 1
-        ? `${u.hostname}/${segs[0]}/…`
-        : `${u.hostname}${path}`;
-    }
-    return u.hostname;
-  } catch {
-    return url;
-  }
-}
+import { extractLinks, linkLabel } from "../lib/links";
 
 interface Props {
   task: Task;

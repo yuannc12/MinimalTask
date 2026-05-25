@@ -5,8 +5,10 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Task, TaskStatus } from "../db";
 import { fmtClock, fmtMin, fmtSec, parseDuration } from "../lib/parseInput";
+import { extractLinks } from "../lib/links";
 import { normalizeTag, parseTags, stringifyTags } from "../lib/tags";
 
 interface Props {
@@ -28,6 +30,7 @@ interface Props {
   onDragEnd: () => void;
   onDrop: () => void;
   dragState?: "dragging" | "drop-above" | "drop-below" | null;
+  dragEnabled?: boolean;
   isRunning: boolean;
   isExpanded: boolean;
   runningElapsedSec: number;
@@ -57,6 +60,7 @@ export function TaskRow({
   onDragEnd,
   onDrop,
   dragState,
+  dragEnabled = true,
   isRunning,
   isExpanded,
   runningElapsedSec,
@@ -209,6 +213,7 @@ export function TaskRow({
   }
 
   const isDone = task.status === "done";
+  const links = extractLinks(task.note);
 
   const cumulativeSec = priorWorkedSec + runningElapsedSec;
   const overage =
@@ -231,7 +236,7 @@ export function TaskRow({
   return (
     <div
       className={classes}
-      draggable={!editing && !isRunning}
+      draggable={dragEnabled && !editing && !isRunning}
       onDragStart={() => onDragStart(task)}
       onDragOver={handleDragOver}
       onDragEnd={onDragEnd}
@@ -362,6 +367,25 @@ export function TaskRow({
             title="Add an estimate"
           >
             +est
+          </button>
+        ) : null}
+        {links.length > 0 &&
+        (task.tag ||
+          task.estimated_minutes ||
+          isRunning ||
+          priorWorkedSec > 0) ? (
+          <span className="task-meta-sep">·</span>
+        ) : null}
+        {links.length > 0 ? (
+          <button
+            className="task-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              void openUrl(links[0]);
+            }}
+            title={links.length === 1 ? links[0] : links.join("\n")}
+          >
+            link{links.length > 1 ? ` ${links.length}` : ""}
           </button>
         ) : null}
         {task.note ? <span className="task-note-dot" title="Has a note">·</span> : null}

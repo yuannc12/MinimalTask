@@ -143,6 +143,12 @@ textarea {
   margin: 0;
 }
 
+.view-header-right {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
 .view-totals {
   font-size: 13px;
   color: var(--ink-2);
@@ -150,6 +156,36 @@ textarea {
 
 .view-totals .is-over {
   color: var(--warn);
+}
+
+.view-sort {
+  font-size: 12px;
+  color: var(--ink-3);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.view-sort-opt {
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 1px 4px;
+  margin: 0 -4px;
+  border-radius: 3px;
+  transition: color var(--t), background var(--t);
+}
+
+.view-sort-opt:hover {
+  color: var(--ink-2);
+  background: var(--bg-muted);
+}
+
+.view-sort-opt.is-active {
+  color: var(--ink);
+}
+
+.view-sort-sep {
+  color: var(--ink-3);
 }
 
 .add-row {
@@ -608,6 +644,26 @@ textarea {
   color: var(--ink-3);
   font-size: 13px;
   margin-left: 4px;
+}
+
+.task-link {
+  font-size: 13px;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  border-radius: 3px;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+  transition: background var(--t), color var(--t), text-decoration-color var(--t);
+}
+
+.task-link:hover {
+  background: var(--bg-muted);
+  color: var(--ink);
+  text-decoration-color: var(--ink-3);
 }
 
 /* Details panel — note-only, underline style */
