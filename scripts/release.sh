@@ -68,6 +68,10 @@ if [ ! -f "$DMG_PATH" ]; then
   exit 1
 fi
 
+# Stable filename copy so /releases/latest/download/MinimalTask.dmg always resolves.
+STABLE_DMG="src-tauri/target/release/bundle/dmg/MinimalTask.dmg"
+cp "$DMG_PATH" "$STABLE_DMG"
+
 echo "→ Tagging $TAG and pushing…"
 git tag "$TAG"
 git push origin HEAD
@@ -88,7 +92,7 @@ Updates: re-download a newer .dmg and drag it over the existing /Applications/mi
 EOF
 )
 
-gh release create "$TAG" "$DMG_PATH" \
+gh release create "$TAG" "$DMG_PATH" "$STABLE_DMG" \
   --title "MinimalTask $TAG" \
   --notes "$NOTES"
 
