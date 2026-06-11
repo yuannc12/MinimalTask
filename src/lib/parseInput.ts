@@ -81,6 +81,15 @@ export function fmtMin(min: number): string {
   return fmtSec(min * 60);
 }
 
+// Calendar date from Unix seconds, e.g. "Jun 11, 2026".
+export function fmtDate(sec: number): string {
+  return new Date(sec * 1000).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 // Live clock format: m:ss under an hour, h:mm:ss above.
 export function fmtClock(sec: number): string {
   const s = Math.max(0, Math.floor(sec));

@@ -9,6 +9,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Task } from "../db";
 import { extractLinks, linkLabel, toHref } from "../lib/links";
+import { fmtDate } from "../lib/parseInput";
 
 interface Props {
   task: Task;
@@ -91,6 +92,7 @@ export function TaskDetails({ task, onSave, onClose, autoFocus = true }: Props) 
           ))}
         </div>
       )}
+      <div className="task-details-added">Added {fmtDate(task.created_at)}</div>
     </div>
   );
 }
